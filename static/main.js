@@ -39,7 +39,7 @@ document.addEventListener("DOMContentLoaded", function () {
     
     // Spin button click event
     document.querySelector('.spin').addEventListener('click', function () {
-        const initialSpeed = Math.random() * 20 + 20;
+        const initialSpeed = Math.random() * 8 + 12; // Slower speed for better syncing
         socket.emit('spin', { session_code: sessionCode, speed: initialSpeed });
     
         // Start the random cycle after the first spin
@@ -152,14 +152,8 @@ let spinning = false;
 let winner = "";
 let timerInterval;
 
-// Normalize speed based on device pixel ratio
-function getNormalizedSpeed(speed) {
-    const devicePixelRatio = window.devicePixelRatio || 1;
-    return speed / devicePixelRatio;
-}
-
 function spin() {
-    const initialSpeed = Math.random() * 20 + 20;
+    const initialSpeed = Math.random() * 8 + 12; // Slower speed for better syncing
     socket.emit('spin', { speed: initialSpeed });
 }
 
@@ -169,7 +163,7 @@ function startSpinning(initialSpeed) {
     }
 
     console.log('Starting spin with speed:', initialSpeed);
-    speed = getNormalizedSpeed(initialSpeed); // Normalize speed based on device DPI
+    speed = initialSpeed;
     spinning = true;
     requestAnimationFrame(animate);
 }
