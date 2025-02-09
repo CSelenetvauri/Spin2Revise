@@ -3,6 +3,7 @@ import uuid, base64, qrcode, random, threading
 from threading import Event
 from io import BytesIO
 from flask_socketio import SocketIO, emit, join_room, leave_room
+import time
 
 app = Flask(__name__)
 app.secret_key = 'mysecretkey123'
@@ -119,8 +120,12 @@ def handle_spin(data):
             random_participant = random.choice(participants)['name']
         else:
             random_participant = "No participants"
-        emit('spin', {
-            'speed': data['speed'],
+        
+        # Sync spin and timer start
+        spin_duration = data['speed']
+        emit('start_spin_and_timer', {
+            'spin_duration': spin_duration,
+            'timer_duration': spin_duration,
             'random_participant': random_participant
         }, room=session_code)
 
