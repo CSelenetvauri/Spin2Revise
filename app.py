@@ -119,24 +119,10 @@ def handle_spin(data):
             random_participant = random.choice(participants)['name']
         else:
             random_participant = "No participants"
-        
-        # Emit the spin result to the client
         emit('spin', {
             'speed': data['speed'],
             'random_participant': random_participant
         }, room=session_code)
-
-@socketio.on('spin_completed')
-def handle_spin_completed(data):
-    # Once all clients have completed the spin, broadcast the winner and countdown
-    session_code = data['session_code']
-    winner_name = data['winner']
-    countdown_time = 60  # Set the countdown time (in seconds)
-
-    socketio.emit('winner_determined', {
-        'winner': winner_name,
-        'countdown_time': countdown_time
-    }, room=session_code)
 
 def background_random_participant_cycle(session_code, stop_event):
     while not stop_event.is_set():
