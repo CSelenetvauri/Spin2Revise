@@ -21,87 +21,157 @@ def create():
     session_code = str(uuid.uuid4())
     wheel_sessions[session_code] = {
         'items': items,
-        'participants': [],
+        'participants': []
     }
-    return redirect(url_for('session', session_code=session_code))
+    return redirect(url_for('name_input', session_code=session_code))
 
-@app.route('/session/<session_code>', methods=['GET', 'POST'])
-def session(session_code):
+@app.route('/name/<session_code>', methods=['GET', 'POST'])
+def name_input(session_code):
     if session_code not in wheel_sessions:
-        return redirect(url_for('index'))
-    
-    session_data = wheel_sessions[session_code]
-    
+        wheel_sessions[session_code] = {'items': [], 'participants': []}
+
     if request.method == 'POST':
-        user_name = request.form['user_name']
-        session_data['participants'].append(user_name)
-    
-    qr_code_url = f"{request.base_url}/join?session_code={session_code}"
-    qr_code_image = qrcode.make(qr_code_url)
+        user_name = request.form['name']
+        session['user_name'] = user_name  # Store the user's name in the session
+        return redirect(url_for('wheel', session_code=session_code))
 
-    img_io = BytesIO()
-    qr_code_image.save(img_io, 'PNG')
-    img_io.seek(0)
-    qr_code_base64 = base64.b64encode(img_io.read()).decode('utf-8')
-    
-    return render_template('session.html', session_code=session_code, qr_code=qr_code_base64, participants=session_data['participants'])
+    return render_template('name_input.html', session_code=session_code)
 
-@app.route('/join', methods=['GET', 'POST'])
-def join():
-    session_code = request.args.get('session_code')
-    user_name = request.form.get('user_name')
+@app.route('/wheel/<session_code>')
+def wheel(session_code):
+    session_data = wheel_sessions.get(session_code, {})
+    items = session_data.get('items', [])
+    participants = session_data.get('participants', [])
+    user_name = session.get('user_name', 'Anonymous')  # Retrieve the name from the session
 
-    if session_code in wheel_sessions and user_name:
-        session_data = wheel_sessions[session_code]
-        session_data['participants'].append(user_name)
-        return redirect(url_for('session', session_code=session_code))
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(f"{request.host_url}name/{session_code}")
+    qr.make(fit=True)
+    img = qr.make_image(fill='black', back_color='white')
 
-    return redirect(url_for('index'))
+    buffered = BytesIO()
+    img.save(buffered, format="PNG")
+    img_str = base64.b64encode(buffered.getvalue()).decode()
+
+    return render_template(
+        'wheel.html',
+        session_code=session_code,
+        items=items,
+        qr_code=img_str,
+        participants=participants,
+        user_name=user_name
+    )
 
 @socketio.on('join_room')
-def on_join(data):
+def handle_join_room(data):
     session_code = data['session_code']
     user_name = data['user_name']
+
+    if session_code not in wheel_sessions:
+        wheel_sessions[session_code] = {'items': [], 'participants': []}
+
+    if not any(p['name'] == user_name for p in wheel_sessions[session_code]['participants']):
+        wheel_sessions[session_code]['participants'].append({
+            'name': user_name,
+            'sid': request.sid
+        })
+
     join_room(session_code)
-    emit('new_connection', {'user': user_name}, room=session_code)
+
+    socketio.emit('update_participants', {
+        'participants': [p['name'] for p in wheel_sessions[session_code]['participants']]
+    }, room=session_code)
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    session_code = None
+    user_name = None
+
+    for code, session_data in wheel_sessions.items():
+        for participant in session_data['participants']:
+            if participant['sid'] == request.sid:
+                session_code = code
+                user_name = participant['name']
+                break
+        if session_code:
+            break
+
+    if session_code and user_name:
+        wheel_sessions[session_code]['participants'] = [
+            p for p in wheel_sessions[session_code]['participants'] if p['sid'] != request.sid
+        ]
+
+        socketio.emit('update_participants', {
+            'participants': [p['name'] for p in wheel_sessions[session_code]['participants']]
+        }, room=session_code)
 
 @socketio.on('spin')
-def spin(data):
+def handle_spin(data):
     session_code = data['session_code']
-    speed = data['speed']
-    
     if session_code in wheel_sessions:
-        session_data = wheel_sessions[session_code]
-        random_participant = random.choice(session_data['participants'])
-        emit('spin', {'random_participant': random_participant, 'speed': speed}, room=session_code)
+        participants = wheel_sessions[session_code].get('participants', [])
+        if participants:
+            random_participant = random.choice(participants)['name']
+        else:
+            random_participant = "No participants"
+        
+        # Emit the spin result to the client
+        emit('spin', {
+            'speed': data['speed'],
+            'random_participant': random_participant
+        }, room=session_code)
+
+@socketio.on('spin_completed')
+def handle_spin_completed(data):
+    # Once all clients have completed the spin, broadcast the winner and countdown
+    session_code = data['session_code']
+    winner_name = data['winner']
+    countdown_time = 60  # Set the countdown time (in seconds)
+
+    socketio.emit('winner_determined', {
+        'winner': winner_name,
+        'countdown_time': countdown_time
+    }, room=session_code)
+
+def background_random_participant_cycle(session_code, stop_event):
+    while not stop_event.is_set():
+        update_random_participant(session_code)
+        random_interval = random.randint(30, 90)
+        stop_event.wait(random_interval)
+
+def update_random_participant(session_code):
+    if session_code in wheel_sessions:
+        participants = wheel_sessions[session_code].get('participants', [])
+        if not participants:
+            return
+        
+        current_participant = last_random_participants.get(session_code, None)
+        new_participant = random.choice(participants)
+        while new_participant == current_participant:
+            new_participant = random.choice(participants)
+        
+        last_random_participants[session_code] = new_participant
+
+        socketio.emit('random_participant_update', {
+            'random_participant': new_participant['name']
+        }, room=session_code)
 
 @socketio.on('start_random_cycle')
-def start_random_cycle(data):
+def handle_start_random_cycle(data):
     session_code = data['session_code']
-    
-    if session_code in wheel_sessions:
-        session_data = wheel_sessions[session_code]
-        stop_event = Event()
-        
-        def random_participant_cycle():
-            while not stop_event.is_set():
-                random_participant = random.choice(session_data['participants'])
-                emit('random_participant_update', {'random_participant': random_participant}, room=session_code)
-                socketio.sleep(random.randint(5, 15))  # Random interval
+    stop_event = Event()
+    threading.Thread(target=background_random_participant_cycle, args=(session_code, stop_event)).start()
+    wheel_sessions[session_code]['stop_event'] = stop_event
 
-        threading.Thread(target=random_participant_cycle).start()
 
 @socketio.on('winner_removed')
-def winner_removed(data):
-    session_code = data['session_code']
-    emit('remove_winner', room=session_code)
+def handle_winner_removed(data):
+    emit('remove_winner', room=data['session_code'])
 
-@socketio.on('update_participants')
-def update_participants(data):
-    session_code = data['session_code']
-    if session_code in wheel_sessions:
-        session_data = wheel_sessions[session_code]
-        emit('update_participants', {'participants': session_data['participants']}, room=session_code)
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=10000, debug=True)
