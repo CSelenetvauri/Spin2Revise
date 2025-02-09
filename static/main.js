@@ -95,42 +95,8 @@ document.addEventListener("DOMContentLoaded", function () {
     setInterval(autoCloseWinnerWrapper, 1000);
 });
 
-// Function to calculate the appropriate spin duration based on the refresh rate
-function calculateSpinDuration() {
-    const defaultDuration = 4000; // Default spin duration in milliseconds
-    const refreshRate = getRefreshRate(); // Get the refresh rate of the screen
-    const adjustedDuration = defaultDuration * (60 / refreshRate); // Adjust duration based on refresh rate
-    return adjustedDuration;
-}
 
-// Function to detect the screen refresh rate
-function getRefreshRate() {
-    let lastTime = 0;
-    let frameCount = 0;
-    const refreshRate = 60; // Default refresh rate is 60fps if calculation fails
-
-    // Using requestAnimationFrame to calculate refresh rate
-    function calculateRate(timestamp) {
-        if (lastTime) {
-            frameCount++;
-            if (timestamp - lastTime >= 1000) {
-                // If one second has passed, calculate the rate
-                return frameCount;
-            }
-        }
-        lastTime = timestamp;
-        requestAnimationFrame(calculateRate);
-    }
-    
-    requestAnimationFrame(calculateRate);
-
-    return refreshRate; // return calculated or default refresh rate
-}
-
-function toRad(deg) {
-    return deg * (Math.PI / 180);
-}
-
+// Animation and Wheel Logic
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
@@ -196,38 +162,36 @@ function startSpinning(initialSpeed) {
     console.log('Starting spin with speed:', initialSpeed);
     speed = initialSpeed;
     spinning = true;
-    const spinDuration = calculateSpinDuration(); // Get the adjusted spin duration
-    const deceleration = 0.98 * (60 / getRefreshRate()); // Adjust deceleration for different refresh rates
     requestAnimationFrame(animate);
-
-    function animate() {
-        if (!spinning) return;
-
-        currentAngle += speed;
-        speed *= deceleration; // Apply deceleration based on refresh rate
-
-        ctx.clearRect(0, 0, width, height);
-
-        ctx.save();
-        ctx.translate(centerX, centerY);
-        ctx.rotate(toRad(currentAngle));
-        ctx.translate(-centerX, -centerY);
-
-        const items = document.getElementById("items").value.split("\n").filter(item => item.trim() !== "");
-        drawWheel(ctx, items, centerX, centerY, radius);
-
-        ctx.restore();
-
-        if (speed < 0.01) {
-            speed = 0;
-            spinning = false;
-            determineWinner(items, currentAngle);
-        } else {
-            requestAnimationFrame(animate);
-        }
-    }
 }
 
+
+function animate() {
+    if (!spinning) return;
+
+    currentAngle += speed;
+    speed *= 0.98;
+
+    ctx.clearRect(0, 0, width, height);
+
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(toRad(currentAngle));
+    ctx.translate(-centerX, -centerY);
+
+    const items = document.getElementById("items").value.split("\n").filter(item => item.trim() !== "");
+    drawWheel(ctx, items, centerX, centerY, radius);
+
+    ctx.restore();
+
+    if (speed < 0.01) {
+        speed = 0;
+        spinning = false;
+        determineWinner(items, currentAngle);
+    } else {
+        requestAnimationFrame(animate);
+    }
+}
 
 function determineWinner(items, angle) {
     const step = 360 / items.length;
@@ -238,24 +202,26 @@ function determineWinner(items, angle) {
     items.splice(items.length - 1 - winningIndex, 1); // Remove the winner
     document.getElementById("items").value = items.join("\n"); // Update the textarea
 
+    // Emit winner and start countdown to all participants
+    socket.emit('winner_determined', { winner: winner, countdown: 10 * 60 });
+
+    createWheel(); // Redraw the wheel without the removed item
+}
+
+
+// SocketIO - Listen for winner and countdown updates
+
+socket.on('winner_determined', function (data) {
     const winnerWrapper = document.getElementById("winner-wrapper");
     const winnerDiv = document.getElementById("winner");
-    winnerDiv.textContent = `${winner}`;
+    winnerDiv.textContent = `${data.winner}`;
 
     if (winnerWrapper) {
         winnerWrapper.classList.remove("hidden");
     }
 
-    // Disable spin button if no items are left
-    const spinButton = document.getElementById("spin-button");
-    if (items.length === 0) {
-        spinButton.disabled = true; // Disable the button
-        spinButton.classList.add("disabled"); // Optionally add a class for styling
-    }
-
-    startCountdown(10 * 60);
-    createWheel(); // Redraw the wheel without the removed item
-}
+    startCountdown(data.countdown);
+});
 
 
 function startCountdown(duration) {
@@ -279,9 +245,3 @@ function startCountdown(duration) {
         }
     }, 1000);
 }
-
-document.getElementById("winner-wrapper").addEventListener("click", function() {
-    this.classList.add("hidden");
-
-    socket.emit('winner_removed');
-});
