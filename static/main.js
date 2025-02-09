@@ -22,7 +22,7 @@ document.addEventListener("DOMContentLoaded", function () {
     
         // Update the random participant in the DOM
         const randomParticipantDiv = document.getElementById("random-participant");
-        randomParticipantDiv.textContent = data.random_participant;
+        randomParticipantDiv.textContent = `${data.random_participant}`;
         randomParticipantDiv.classList.remove("hidden"); // Ensure the participant div is visible
     });
 
@@ -77,7 +77,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     socket.on('random_participant_update', function (data) {
         const randomParticipantDiv = document.getElementById("random-participant");
-        randomParticipantDiv.textContent = data.random_participant;
+        randomParticipantDiv.textContent = `${data.random_participant}`;
         randomParticipantDiv.classList.remove("hidden");
     });
     
@@ -94,7 +94,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     setInterval(autoCloseWinnerWrapper, 1000);
 });
-    
+
 
 function toRad(deg) {
     return deg * (Math.PI / 180);
@@ -152,6 +152,12 @@ let spinning = false;
 let winner = "";
 let timerInterval;
 
+// Normalize speed based on device pixel ratio
+function getNormalizedSpeed(speed) {
+    const devicePixelRatio = window.devicePixelRatio || 1;
+    return speed / devicePixelRatio;
+}
+
 function spin() {
     const initialSpeed = Math.random() * 20 + 20;
     socket.emit('spin', { speed: initialSpeed });
@@ -163,7 +169,7 @@ function startSpinning(initialSpeed) {
     }
 
     console.log('Starting spin with speed:', initialSpeed);
-    speed = initialSpeed;
+    speed = getNormalizedSpeed(initialSpeed); // Normalize speed based on device DPI
     spinning = true;
     requestAnimationFrame(animate);
 }
@@ -207,7 +213,7 @@ function determineWinner(items, angle) {
 
     const winnerWrapper = document.getElementById("winner-wrapper");
     const winnerDiv = document.getElementById("winner");
-    winnerDiv.textContent = winner;
+    winnerDiv.textContent = `${winner}`;
 
     if (winnerWrapper) {
         winnerWrapper.classList.remove("hidden");
@@ -220,7 +226,7 @@ function determineWinner(items, angle) {
         spinButton.classList.add("disabled"); // Optionally add a class for styling
     }
 
-    startCountdown(10 * 60); // Start countdown timer
+    startCountdown(10 * 60);
     createWheel(); // Redraw the wheel without the removed item
 }
 
