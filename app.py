@@ -6,7 +6,7 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 
 app = Flask(__name__)
 app.secret_key = 'mysecretkey123'
-socketio = SocketIO(app)
+socketio = SocketIO(app, async_mode="eventlet")
 
 wheel_sessions = {}
 last_random_participants = {}
@@ -159,5 +159,5 @@ def handle_start_random_cycle(data):
 def handle_winner_removed(data):
     emit('remove_winner', room=data['session_code'])
 
-if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', debug=True)
+if __name__ == "__main__":
+    socketio.run(app, host="0.0.0.0", port=10000, debug=True)
