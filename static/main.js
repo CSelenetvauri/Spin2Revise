@@ -95,7 +95,37 @@ document.addEventListener("DOMContentLoaded", function () {
     setInterval(autoCloseWinnerWrapper, 1000);
 });
 
+// Function to calculate the appropriate spin duration based on the refresh rate
+function calculateSpinDuration() {
+    const defaultDuration = 4000; // Default spin duration in milliseconds
+    const refreshRate = getRefreshRate(); // Get the refresh rate of the screen
+    const adjustedDuration = defaultDuration * (60 / refreshRate); // Adjust duration based on refresh rate
+    return adjustedDuration;
+}
 
+// Function to detect the screen refresh rate
+function getRefreshRate() {
+    let lastTime = 0;
+    let frameCount = 0;
+    const refreshRate = 60; // Default refresh rate is 60fps if calculation fails
+
+    // Using requestAnimationFrame to calculate refresh rate
+    function calculateRate(timestamp) {
+        if (lastTime) {
+            frameCount++;
+            if (timestamp - lastTime >= 1000) {
+                // If one second has passed, calculate the rate
+                return frameCount;
+            }
+        }
+        lastTime = timestamp;
+        requestAnimationFrame(calculateRate);
+    }
+    
+    requestAnimationFrame(calculateRate);
+
+    return refreshRate; // return calculated or default refresh rate
+}
 
 function toRad(deg) {
     return deg * (Math.PI / 180);
@@ -166,6 +196,7 @@ function startSpinning(initialSpeed) {
     console.log('Starting spin with speed:', initialSpeed);
     speed = initialSpeed;
     spinning = true;
+    const spinDuration = calculateSpinDuration(); // Get the adjusted spin duration
     requestAnimationFrame(animate);
 }
 
