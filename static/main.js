@@ -95,7 +95,10 @@ document.addEventListener("DOMContentLoaded", function () {
     setInterval(autoCloseWinnerWrapper, 1000);
 });
 
+// Determine refresh rate (60Hz, 90Hz, or 120Hz)
+const refreshRate = Math.max(window.screen.refreshRate || 60, 60); // Set default as 60Hz
 
+// Function to convert degrees to radians
 function toRad(deg) {
     return deg * (Math.PI / 180);
 }
@@ -168,7 +171,7 @@ function startSpinning(initialSpeed) {
     requestAnimationFrame(animate);
 }
 
-
+// Update animation logic to be based on refresh rate
 function animate() {
     if (!spinning) return;
 
@@ -192,7 +195,9 @@ function animate() {
         spinning = false;
         determineWinner(items, currentAngle);
     } else {
-        requestAnimationFrame(animate);
+        // Adjust animation based on refresh rate for smoother experience
+        let frameRateAdjustment = (refreshRate === 120) ? 0.8 : (refreshRate === 90) ? 1.0 : 1.2;
+        requestAnimationFrame(() => animate(frameRateAdjustment));
     }
 }
 
