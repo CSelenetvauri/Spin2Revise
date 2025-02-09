@@ -36,7 +36,7 @@ document.addEventListener("DOMContentLoaded", function () {
         console.log("Updated participants:", data.participants);
         updateParticipantsList(data.participants);
     });
-    
+
     // Spin button click event
     document.querySelector('.spin').addEventListener('click', function () {
         const initialSpeed = Math.random() * 8 + 12; // Slower speed for better syncing
@@ -50,7 +50,6 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("participants-list").classList.remove("hidden")
     });
     
-
     // Close winner-wrapper when clicked
     document.getElementById("participants-list").addEventListener("click", function () {
         this.classList.add("hidden");
@@ -81,7 +80,6 @@ document.addEventListener("DOMContentLoaded", function () {
         randomParticipantDiv.classList.remove("hidden");
     });
     
-    
     // Ensure winner-wrapper closes automatically after the timer ends
     function autoCloseWinnerWrapper() {
         const timerDisplay = document.getElementById('timer');
@@ -95,14 +93,11 @@ document.addEventListener("DOMContentLoaded", function () {
     setInterval(autoCloseWinnerWrapper, 1000);
 });
 
-// Determine refresh rate (60Hz, 90Hz, or 120Hz)
 const refreshRate = Math.max(window.screen.refreshRate || 60, 60); // Set default as 60Hz
 
-// Function to convert degrees to radians
 function toRad(deg) {
     return deg * (Math.PI / 180);
 }
-
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
@@ -171,7 +166,6 @@ function startSpinning(initialSpeed) {
     requestAnimationFrame(animate);
 }
 
-// Update animation logic to be based on refresh rate
 function animate() {
     if (!spinning) return;
 
@@ -195,7 +189,6 @@ function animate() {
         spinning = false;
         determineWinner(items, currentAngle);
     } else {
-        // Adjust animation based on refresh rate for smoother experience
         let frameRateAdjustment = (refreshRate === 120) ? 0.8 : (refreshRate === 90) ? 1.0 : 1.2;
         requestAnimationFrame(() => animate(frameRateAdjustment));
     }
@@ -221,14 +214,13 @@ function determineWinner(items, angle) {
     // Disable spin button if no items are left
     const spinButton = document.getElementById("spin-button");
     if (items.length === 0) {
-        spinButton.disabled = true; // Disable the button
-        spinButton.classList.add("disabled"); // Optionally add a class for styling
+        spinButton.disabled = true;
+        spinButton.classList.add("disabled");
     }
 
     startCountdown(10 * 60);
-    createWheel(); // Redraw the wheel without the removed item
+    createWheel();
 }
-
 
 function startCountdown(duration) {
     let countdownTime = duration;
