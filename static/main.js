@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", function () {
     socket.emit('join_room', { session_code: sessionCode, user_name: userName });
 
     // Log user and session info
-    console.log(`User ${userName} joined session ${sessionCode}`);
+    console.log(User ${userName} joined session ${sessionCode});
     
     // Listen for updates from other users
     socket.on('new_connection', function (data) {
@@ -22,7 +22,7 @@ document.addEventListener("DOMContentLoaded", function () {
     
         // Update the random participant in the DOM
         const randomParticipantDiv = document.getElementById("random-participant");
-        randomParticipantDiv.textContent = `${data.random_participant}`;
+        randomParticipantDiv.textContent = ${data.random_participant};
         randomParticipantDiv.classList.remove("hidden"); // Ensure the participant div is visible
     });
 
@@ -77,7 +77,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     socket.on('random_participant_update', function (data) {
         const randomParticipantDiv = document.getElementById("random-participant");
-        randomParticipantDiv.textContent = `${data.random_participant}`;
+        randomParticipantDiv.textContent = ${data.random_participant};
         randomParticipantDiv.classList.remove("hidden");
     });
     
@@ -94,6 +94,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     setInterval(autoCloseWinnerWrapper, 1000);
 });
+
+
+
 function toRad(deg) {
     return deg * (Math.PI / 180);
 }
@@ -205,7 +208,7 @@ function determineWinner(items, angle) {
 
     const winnerWrapper = document.getElementById("winner-wrapper");
     const winnerDiv = document.getElementById("winner");
-    winnerDiv.textContent = `${winner}`;
+    winnerDiv.textContent = ${winner};
 
     if (winnerWrapper) {
         winnerWrapper.classList.remove("hidden");
