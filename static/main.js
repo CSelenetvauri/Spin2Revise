@@ -94,9 +94,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     setInterval(autoCloseWinnerWrapper, 1000);
 });
+function toRad(deg) {
+    return deg * (Math.PI / 180);
+}
 
-
-// Animation and Wheel Logic
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
@@ -202,26 +203,24 @@ function determineWinner(items, angle) {
     items.splice(items.length - 1 - winningIndex, 1); // Remove the winner
     document.getElementById("items").value = items.join("\n"); // Update the textarea
 
-    // Emit winner and start countdown to all participants
-    socket.emit('winner_determined', { winner: winner, countdown: 10 * 60 });
-
-    createWheel(); // Redraw the wheel without the removed item
-}
-
-
-// SocketIO - Listen for winner and countdown updates
-
-socket.on('winner_determined', function (data) {
     const winnerWrapper = document.getElementById("winner-wrapper");
     const winnerDiv = document.getElementById("winner");
-    winnerDiv.textContent = `${data.winner}`;
+    winnerDiv.textContent = `${winner}`;
 
     if (winnerWrapper) {
         winnerWrapper.classList.remove("hidden");
     }
 
-    startCountdown(data.countdown);
-});
+    // Disable spin button if no items are left
+    const spinButton = document.getElementById("spin-button");
+    if (items.length === 0) {
+        spinButton.disabled = true; // Disable the button
+        spinButton.classList.add("disabled"); // Optionally add a class for styling
+    }
+
+    startCountdown(10 * 60);
+    createWheel(); // Redraw the wheel without the removed item
+}
 
 
 function startCountdown(duration) {
@@ -245,3 +244,9 @@ function startCountdown(duration) {
         }
     }, 1000);
 }
+
+document.getElementById("winner-wrapper").addEventListener("click", function() {
+    this.classList.add("hidden");
+
+    socket.emit('winner_removed');
+});
