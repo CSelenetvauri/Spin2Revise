@@ -1,9 +1,8 @@
-from flask import Flask, render_template, request, redirect, url_for, session, make_response
+from flask import Flask, render_template, request, redirect, url_for, session
 import uuid, base64, qrcode, random, threading
 from threading import Event
 from io import BytesIO
-from flask_socketio import SocketIO, emit, join_room, leave_room
-import time
+from flask_socketio import SocketIO, emit, join_room
 
 app = Flask(__name__)
 app.secret_key = 'mysecretkey123'
@@ -33,7 +32,7 @@ def name_input(session_code):
 
     if request.method == 'POST':
         user_name = request.form['name']
-        session['user_name'] = user_name  # Store the user's name in the session
+        session['user_name'] = user_name
         return redirect(url_for('wheel', session_code=session_code))
 
     return render_template('name_input.html', session_code=session_code)
@@ -43,7 +42,7 @@ def wheel(session_code):
     session_data = wheel_sessions.get(session_code, {})
     items = session_data.get('items', [])
     participants = session_data.get('participants', [])
-    user_name = session.get('user_name', 'Anonymous')  # Retrieve the name from the session
+    user_name = session.get('user_name', 'Anonymous')
 
     qr = qrcode.QRCode(
         version=1,
@@ -120,12 +119,8 @@ def handle_spin(data):
             random_participant = random.choice(participants)['name']
         else:
             random_participant = "No participants"
-        
-        # Sync spin and timer start
-        spin_duration = data['speed']
-        emit('start_spin_and_timer', {
-            'spin_duration': spin_duration,
-            'timer_duration': spin_duration,
+        emit('spin', {
+            'speed': data['speed'],
             'random_participant': random_participant
         }, room=session_code)
 
@@ -165,4 +160,4 @@ def handle_winner_removed(data):
     emit('remove_winner', room=data['session_code'])
 
 if __name__ == "__main__":
-    socketio.run(app, host="0.0.0.0", port=10000, debug=True)
+    socketio.run(app, port=10000, debug=True)
